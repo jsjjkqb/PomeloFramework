@@ -28,7 +28,9 @@ class PlaybackList extends PlaybackListBase {
 
     pushPlayback(operation, userId, cardList, grabUserId, grabCard) {
         let playback = this._newPlayback(operation, userId, cardList);
-        playback.grabPlayer = {userId: grabUserId, card: dataUtil.convertCardToInt(grabCard)};
+        if (grabUserId) {
+            playback.grabPlayer = {userId: grabUserId, card: dataUtil.convertCardToInt(grabCard)};
+        }
         this.push(playback);
     }
 }

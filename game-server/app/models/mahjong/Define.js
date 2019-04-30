@@ -21,3 +21,10 @@ module.exports = {
         OPERATION_GHOSTGANG     : 29,   // 带鬼杠
     }
 }
+
+module.exports = {
+    isCanChi        : true,     // 是否可以吃
+    isCanChiHu      : true,     // 是否可以吃胡
+    isCanGhostPeng  : true,     // 是否可以带鬼碰
+    isCanGhostGang  : true,     // 是否可以带鬼杠
+}
