@@ -1,0 +1,15 @@
+{
+  "development":{
+    "connector": [
+    {"id": "connector-server-1", "host": "127.0.0.1", "port": 10010, "clientHost": "127.0.0.1", "clientPort": 10011, "frontend": true, "args": [ "--inspect=10012"]}
+    ],
+    "room": [
+      {"id": "room-server-1", "host": "127.0.0.1", "port": 10110, "clientHost": "127.0.0.1", "clientPort": 10111, "frontend": true, "args": [ "--inspect=10112"]}
+    ]
+  },
+  "production":{
+    "connector": [
+    {"id": "connector-server-1", "host": "127.0.0.1", "port": 3150, "clientHost": "127.0.0.1", "clientPort": 3010, "frontend": true}
+    ]
+  }
+}
