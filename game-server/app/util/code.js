@@ -12,11 +12,12 @@ module.exports = {
         NO_CARD_ERROR       : result(851, '您没有这手牌'),
         CHI_BUILD_ERROR     : result(852, '不能组成顺子'),
         CHI_ERROR           : result(853, '吃牌错误'),
+        NOT_SUPPORT_CHI     : result(854, '不支持吃牌玩法'),
         PENG_BUILD_ERROR    : result(854, '不能组成碰牌'),
         PENG_ERROR          : result(855, '碰牌错误'),
         GANG_BUILD_ERROR    : result(856, '不能组成杠牌'),
         GANG_ERROR          : result(857, '杠牌错误'),
-
+        NOT_SUPPORT_GHOST   : result(854, '不支持带鬼碰杠玩法'),
     },
     ROOM: {
         ENOUGH_PLAYER       : result(901, '房间已满人'),

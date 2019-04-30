@@ -64,9 +64,10 @@ class Player extends PlayerBase {
             const card = cardList[i];
             if (card.point == theCard.point) {
                 cardList.splice(i, 1);
-                break;
+                return true;
             }
         }
+        return false;
     }
 
     /**
@@ -75,9 +76,13 @@ class Player extends PlayerBase {
      * @param {Array<Card>} cardList 牌组所在牌组
      */
     _removeCards(cards, cardList) {
+        let removeCards = [];
         cards.forEach(card => {
-            this._removeOneCard(card, cardList);
+            if (this._removeOneCard(card, cardList)) {
+                removeCards.push(card);
+            }
         });
+        return removeCards;
     }
 
     // ------------------------ method -----------------------
@@ -108,8 +113,8 @@ class Player extends PlayerBase {
      */
     playCard(card) {
         for (let i = 0; i < this.handCards.length; i++) {
-            const tmpCard = this.handCards[i];
-            if (tmpCard.point == card.point) {
+            const card = this.handCards[i];
+            if (card.point == card.point) {
                 this.handCards.splice(i, 1);
                 this.pastCards.push(card);
                 this.lastCards = [card];
@@ -127,25 +132,33 @@ class Player extends PlayerBase {
     }
 
     /**
-     * 吃
+     * 吃：只能吃上家
      * @param {Array<Card>} cards 
      * @param {Card} lastCard 
      */
     chi(cards, lastCard) {
+        // 参数出错
+        if (!cards || cards.length != 3 || !lastCard) {
+            return Code.makeResult(Code.PLAYER.CHI_ERROR);
+        }
+        // 去掉上家出的牌
+        let cardList = cards.map(card => {
+            return card.point != lastCard.point;
+        })
         // 是否存在该牌组并移除
-        if (this._isContainCards(cards)) {
+        if (this._isContainCards(cardList)) {
             // 是否顺子
-            let groupCard = new StraightCard();
             let tmpCards = cards.slice(0);
-            tmpCards.push(lastCard);
+            let groupCard = new StraightCard();
             groupCard.initCards(tmpCards);
             if (!groupCard.cards) {
                 // 不能组成顺子
                 return Code.makeResult(Code.PLAYER.CHI_BUILD_ERROR);
             }
             // 移除手牌
-            this._removeCards(cards, this.handCards);
+            this._removeCards(cardList, this.handCards);
             // 添加到吃牌组
+            groupCard.grabPlayer = {card: lastCard.point};
             this.chiCards.push(groupCard);
             return Code.makeResult();
         }
@@ -158,6 +171,10 @@ class Player extends PlayerBase {
      * @param {Card} lastCard 
      */
     peng(cards, lastCard) {
+        // 参数错误
+        if (!cards ||cards.length != 2 || !lastCard) {
+            return Code.makeResult(Code.PLAYER.PENG_ERROR);
+        }
         // 是否存在该牌组并移除
         if (this._isContainCards(cards)) {
             // 是否碰牌组
@@ -172,6 +189,7 @@ class Player extends PlayerBase {
             // 移除手牌
             this._removeCards(cards, this.handCards);
             // 添加到碰牌组
+            groupCard.grabPlayer = {card: lastCard.point};
             this.pengCards.push(groupCard);
             return Code.makeResult();
         }
@@ -184,6 +202,10 @@ class Player extends PlayerBase {
      * @param {Card} lastCard 
      */
     gongGang(cards, lastCard) {
+        // 参数错误
+        if (!cards || cards.length != 3 || !lastCard) {
+            return Code.makeResult(Code.PLAYER.GANG_ERROR);
+        }
         // 是否存在该牌组并移除
         if (this._isContainCards(cards)) {
             // 是否杠牌组
@@ -198,6 +220,7 @@ class Player extends PlayerBase {
             // 移除手牌
             this._removeCards(cards, this.handCards);
             // 添加到杠牌组
+            groupCard.grabPlayer = {card: lastCard.point};
             groupCard.type = Define.OPERATION.OPERATION_GONGGANG;
             this.gangCards.push(groupCard);
             return Code.makeResult();
@@ -210,50 +233,79 @@ class Player extends PlayerBase {
      * @param {Array<Card>} cards 
      */
     mingGang(cards = []) {
+        // 参数错误
+        if (!cards || cards.length != 4) {
+            return Code.makeResult(Code.PLAYER.GANG_ERROR);
+        }
         // 普通牌
         let normalCard = cards.find(card => {
             return !card.isGhost;
         })
+        // 没有普通牌，结束
         if (!normalCard) {
             return Code.makeResult(Code.PLAYER.GANG_ERROR);
         }
-        // 碰牌组
-        let pengCard = this.pengCards.find(groupCard => {
+        // 参与明杠的碰牌组或杠牌组：先找碰牌组
+        let groupCard = this.pengCards.find(groupCard => {
             return groupCard.some(card => {
                 return card.point == normalCard.point;
             })
         })
-        if (!pengCard) {
-            return Code.makeResult(Code.PLAYER.NO_CARD_ERROR);
-        }
-        // 手牌
-        let isFindCard = this.handCards.some(card => {
-            return card.point == normalCard.point;
-        })
-        let ghostCard = null;
-        if (!isFindCard) {
-            // 鬼牌
-            ghostCard = this.handCards.find(card => {
-                return card.isGhost;
+        // 没有碰牌组就找杠牌组
+        if (!groupCard && Define.isCanGhostPengGang) {
+            groupCard = this.gangCards.find(groupCard => {
+                return groupCard.some(card => {
+                    return card.point == normalCard.point;
+                })
             })
         }
-        if(!isFindCard && !ghostCard) {
+        // 都没有，结束
+        if (!groupCard) {
             return Code.makeResult(Code.PLAYER.NO_CARD_ERROR);
+        }
+        // 取出参与明杠的手牌：手牌有、cards有、groupCard可能有
+        let tmpCards = sortUtil.sort(cards.slice(0), true);
+        let cardsInHand = tmpCards.filter(card => {
+            return this.handCards.some(card2 => {
+                return card.point == card2.point;
+            });
+        })
+        // 没牌，结束
+        if (cardsInHand.length == 0) {
+            return Code.makeResult(Code.PLAYER.NO_CARD_ERROR);
+        }
+        // 取牌
+        let grabCard = cardsInHand[0];
+        // 有多张牌，比对groupCard
+        if (cardsInHand.length > 1) {
+            let cardsInGroup = tmpCards.filter(card => {
+                return groupCard.cards.every(card2 => {
+                    return card.point != card2.point;
+                })
+            })
+            // 不存在多张情况，值为0/1
+            // 没有则取cardsInHand首张，有则
+            if (cardsInGroup.length > 0) {
+                grabCard = cardsInHand.find(card => {
+                    return card.point == cardsInGroup[0].point;
+                })
+            }
+            // 若没有还是取首张
+            if (!grabCard) {
+                grabCard = cardsInHand[0];
+            }
         }
         // 是否杠牌组
         let groupCard = new FourCard();
-        let tmpCards = cards.slice(0);
+        tmpCards = cards.slice(0);
         groupCard.initCards(tmpCards);
         if (!groupCard.cards) {
             return Code.makeResult(Code.PLAYER.GANG_BUILD_ERROR);
         }
         // 移除手牌
-        if (ghostCard) {
-            this._removeCards(ghostCard, this.handCards);
-        } else {
-            this._removeOneCard(normalCard, this.handCards);
-        }
+        this._removeOneCard(grabCard, this.handCards);
         // 添加到杠牌组
+        groupCard.grabPlayer = {card: grabCard.point};
         groupCard.type = Define.OPERATION.OPERATION_MINGGANG;
         this.gangCards.push(groupCard);
         return Code.makeResult();
@@ -263,7 +315,11 @@ class Player extends PlayerBase {
      * 
      * @param {Array<Card>} cards 
      */
-    anGang(cards) {
+    anGang(cards = []) {
+        // 参数错误
+        if (!cards || cards.length != 4) {
+            return Code.makeResult(Code.PLAYER.GANG_ERROR);
+        }
         // 是否存在该牌组并移除
         if (this._isContainCards(cards)) {
             // 是否杠牌组
@@ -282,6 +338,26 @@ class Player extends PlayerBase {
             return Code.makeResult();
         }
         return Code.makeResult(Code.PLAYER.NO_CARD_ERROR);
+    }
+
+    isCanChi(lastCard) {
+
+    }
+
+    isCanPeng(lastCard) {
+        
+    }
+
+    isCanGongGang(lastCard) {
+
+    }
+
+    isCanMingGang() {
+
+    }
+
+    isAnGang() {
+
     }
 }
 

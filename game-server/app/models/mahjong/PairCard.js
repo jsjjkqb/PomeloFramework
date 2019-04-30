@@ -1,5 +1,6 @@
 let SAFE = require('../../util/modelUtil').SAFE;
 let sortUtil = require('../../util/sortUtil');
+let Define = require('./Define');
 
 /**
  * 将
@@ -7,7 +8,7 @@ let sortUtil = require('../../util/sortUtil');
  */
 class PairCard {
     constructor(opts = {}) {
-        this.cards = SAFE(opts.cards, []);
+        this.cards = SAFE(opts.cards, null);
     }
 
     initCards(theCards = []) {
@@ -20,9 +21,8 @@ class PairCard {
     /**
      * 
      * @param {Array<Card>} theCards 
-     * @param {Boolean} canWithGhost 是否带鬼：不会传进来参数，只使用默认值，不同游戏可以更改默认值
      */
-    checkCards(theCards = [], canWithGhost = false) {
+    checkCards(theCards = []) {
         // 普通牌数
         let normalList = theCards.filter(card => {
             return !card.isGhost;
@@ -35,11 +35,13 @@ class PairCard {
         let isAllSame = normalList.every(card => {
             return card.point == normalCard.point;
         })
-        if (canWithGhost && isAllSame) {
+        // 鬼牌可变任意牌
+        if (Define.isCanGhostPengGang && isAllSame) {
             this.cards = sortUtil.sort(theCards);
             return this;
         }
-        if (!canWithGhost && normalList.length == theCards.length) {
+        // 无鬼时，普通牌需一致
+        if (!Define.isCanGhostPengGang && normalList.length == theCards.length) {
             this.cards = theCards;
             return this;
         }
